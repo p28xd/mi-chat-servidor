@@ -22,10 +22,10 @@ async def handler(websocket):
                     version_cli = partes[0]
                     apodo_usuario = partes[1] if len(partes) > 1 else "Anónimo"
 
-                    if version.parse(version_cli) < version.parse(VERSION_MINIMA):
-                    await websocket.send(f"ERR_VER:Tu cliente está desactualizado (v{version_cli}). La versión mínima requerida es v{VERSION_MINIMA}.")
-                    await websocket.close()
-                    return
+                    if version_cli < VERSION_MINIMA:
+                        await websocket.send(f"ERR_VER:Tu cliente está desactualizado (v{version_cli}). La versión mínima requerida es v{VERSION_MINIMA}.")
+                        await websocket.close()
+                        return
                     
                     autenticado = True
                     
@@ -68,10 +68,9 @@ async def handler(websocket):
 
 async def main():
     port = int(os.environ.get("PORT", 8080))
-    # Usamos serve() como context manager bloqueante
     async with websockets.serve(handler, "0.0.0.0", port):
         print(f"Servidor corriendo en el puerto {port}")
-        await asyncio.Event().wait()  # Método nativo y estable para mantener vivo el servidor
+        await asyncio.Event().wait()
 
 if __name__ == "__main__":
     asyncio.run(main())
