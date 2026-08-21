@@ -2,7 +2,7 @@ import asyncio
 import os
 import websockets
 
-VERSION_MINIMA = "1.1.0"
+VERSION_MINIMA = "1.0.0"
 CLAVE_ADMIN = "Daviconsualiento1414"
 
 CLIENTES = set()
@@ -22,10 +22,10 @@ async def handler(websocket):
                     version_cli = partes[0]
                     apodo_usuario = partes[1] if len(partes) > 1 else "Anónimo"
 
-                    if version_cli < VERSION_MINIMA:
-                        await websocket.send(f"ERR_VER:Tu cliente está desactualizado (v{version_cli}). La versión mínima requerida es v{VERSION_MINIMA}.")
-                        await websocket.close()
-                        return
+                    if version.parse(version_cli) < version.parse(VERSION_MINIMA):
+                    await websocket.send(f"ERR_VER:Tu cliente está desactualizado (v{version_cli}). La versión mínima requerida es v{VERSION_MINIMA}.")
+                    await websocket.close()
+                    return
                     
                     autenticado = True
                     
