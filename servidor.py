@@ -9,7 +9,7 @@ from websockets.exceptions import ConnectionClosed
 VERSION_MINIMA = "1.0.0"
 
 # Mejor poner esta clave como variable de entorno en Render.
-CLAVE_ADMIN = os.environ.get("CLAVE_ADMIN", "CAMBIAME")
+CLAVE_ADMIN = os.environ.get(Daviconsualiento1414)
 
 CLIENTES = set()
 soundboard_bloqueado = False
@@ -92,7 +92,7 @@ async def handler(websocket):
                         f"TEXT:{hora}|"
                         f"SISTEMA|"
                         f"#27ae60|"
-                        f"🟢 {apodo_usuario} se unió al chat.|"
+                        f"{apodo_usuario} se unió al chat.|"
                         f"NONE"
                     )
 
