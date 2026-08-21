@@ -36,7 +36,7 @@ async def manejar_cliente(websocket):
       if not cliente_verificado:
         hora = datetime.datetime.now().strftime("%H:%M")
         await websocket.send(
-            f"TEXT:{hora}|SISTEMA|red|[!] Cliente antiguo sin verificacion."
+            f"TEXT:{hora}|SISTEMA|red|[!] Cliente desactualizado. Por favor reinstalar."
         )
         await websocket.send("DESACTUALIZADO")
         await websocket.close()
