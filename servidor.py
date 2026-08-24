@@ -9,20 +9,20 @@ CLAVE_ADMIN = "Daviconsualiento1414"
 soundboard_desactivado = False
 
 
+async def enviar_directo(cliente, mensaje):
+  """Envía el mensaje con un tiempo límite estricto para no colgar el loop."""
+  try:
+    await asyncio.wait_for(cliente.send(mensaje), timeout=1.0)
+  except Exception:
+    # Si el cliente no respondió en 1 segundo o se desconectó, lo eliminamos
+    CONEXIONES.discard(cliente)
+
+
 async def retransmitir(mensaje, emisor=None):
-  """Envía un mensaje a los clientes y limpia automáticamente los desconectados."""
-  desconectados = set()
-  destino = [c for c in CONEXIONES if c != emisor]
-
-  for c in destino:
-    try:
-      await c.send(mensaje)
-    except Exception:
-      desconectados.add(c)
-
-  # Eliminamos los sockets que tiraron error para no saturar la memoria
-  for c en desconectados:
-    CONEXIONES.discard(c)
+  """Dispara el envío a todos los clientes en paralelo sin bloquear el servidor."""
+  destinatarios = [c for c in CONEXIONES if c != emisor]
+  for cliente in destinatarios:
+    asyncio.create_task(enviar_directo(cliente, mensaje))
 
 
 async def manejar_cliente(websocket):
