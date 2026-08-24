@@ -6,9 +6,23 @@ import websockets
 CONEXIONES = set()
 VERSION_REQUERIDA = "1.0.0"
 CLAVE_ADMIN = "Daviconsualiento1414"
-
-# Estado global del soundboard para todos los usuarios
 soundboard_desactivado = False
+
+
+async def retransmitir(mensaje, emisor=None):
+  """Envía un mensaje a los clientes y limpia automáticamente los desconectados."""
+  desconectados = set()
+  destino = [c for c in CONEXIONES if c != emisor]
+
+  for c in destino:
+    try:
+      await c.send(mensaje)
+    except Exception:
+      desconectados.add(c)
+
+  # Eliminamos los sockets que tiraron error para no saturar la memoria
+  for c en desconectados:
+    CONEXIONES.discard(c)
 
 
 async def manejar_cliente(websocket):
@@ -18,34 +32,35 @@ async def manejar_cliente(websocket):
 
   try:
     async for mensaje in websocket:
-      # 1. Verificación de versión al conectar
+      # 1. Verificación de versión
       if mensaje.startswith("VER:"):
         version_cliente = mensaje[4:].strip()
 
         if version_cliente != VERSION_REQUERIDA:
           hora = datetime.datetime.now().strftime("%H:%M")
-          msg_aviso = f"TEXT:{hora}|SISTEMA|red|[!] Cliente desactualizado (v{version_cliente}). La version requerida es v{VERSION_REQUERIDA}."
-          await websocket.send(msg_aviso)
-          await websocket.send("DESACTUALIZADO")
-          await websocket.close()
+          msg_aviso = f"TEXT:{hora}|SISTEMA|red|[!] Cliente desactualizado (v{version_cliente}). La versión requerida es v{VERSION_REQUERIDA}."
+          try:
+            await websocket.send(msg_aviso)
+            await websocket.send("DESACTUALIZADO")
+            await websocket.close()
+          except Exception:
+            pass
           return
         else:
           cliente_verificado = True
-          # Le mandamos al cliente nuevo el estado actual del soundboard
           estado_sb = "1" if soundboard_desactivado else "0"
           await websocket.send(f"SB_STATE:{estado_sb}")
           continue
 
       if not cliente_verificado:
-        hora = datetime.datetime.now().strftime("%H:%M")
-        await websocket.send(
-            f"TEXT:{hora}|SISTEMA|red|[!] Cliente antiguo sin verificacion."
-        )
-        await websocket.send("DESACTUALIZADO")
-        await websocket.close()
+        try:
+          await websocket.send("DESACTUALIZADO")
+          await websocket.close()
+        except Exception:
+          pass
         return
 
-      # 2. Control del Soundboard con contraseña
+      # 2. Control Soundboard
       if mensaje.startswith("TOGGLE_SB:"):
         clave_recibida = mensaje[10:]
         if clave_recibida == CLAVE_ADMIN:
@@ -58,38 +73,34 @@ async def manejar_cliente(websocket):
           hora = datetime.datetime.now().strftime("%H:%M")
           msg_notif = f"TEXT:{hora}|SISTEMA|orange|[!] El Soundboard fue {estado_txt} por un administrador."
 
-          # Notificamos el nuevo estado a ABSOLUTAMENTE TODOS los conectados
-          for c in list(CONEXIONES):
-            try:
-              await c.send(f"SB_STATE:{estado_sb}")
-              await c.send(msg_notif)
-            except Exception:
-              pass
+          await retransmitir(f"SB_STATE:{estado_sb}")
+          await retransmitir(msg_notif)
         else:
-          # Si le erró a la clave, le avisamos solo al que la ingresó
           await websocket.send("SB_AUTH_FAILED")
         continue
 
-      # 3. Si el soundboard está desactivado globalmente, ignora solicitudes de audio
+      # 3. Ignorar audios si está bloqueado
       if mensaje.startswith("SND_KEY:") and soundboard_desactivado:
         continue
 
-      # 4. Retransmisión normal (dibujo, chat, audios) a los demás
-      para_enviar = [c for c in CONEXIONES if c != websocket]
-      if para_enviar:
-        await asyncio.gather(*[c.send(mensaje) for c in para_enviar])
+      # 4. Retransmisión segura
+      await retransmitir(mensaje, emisor=websocket)
 
   except Exception:
     pass
   finally:
-    if websocket in CONEXIONES:
-      CONEXIONES.remove(websocket)
+    CONEXIONES.discard(websocket)
 
 
 async def main():
   puerto = int(os.environ.get("PORT", 10000))
-  async with websockets.serve(manejar_cliente, "0.0.0.0", puerto):
-    print(f"[+] Servidor activo en puerto {puerto}")
+
+  # ping_interval=20: Envía pings periódicos para mantener el canal abierto en Render
+  # ping_timeout=20: Descarta la conexión si el cliente no responde en 20s
+  async with websockets.serve(
+      manejar_cliente, "0.0.0.0", puerto, ping_interval=20, ping_timeout=20
+  ):
+    print(f"[+] Servidor activo y blindado en puerto {puerto}")
     await asyncio.Future()
 
 
