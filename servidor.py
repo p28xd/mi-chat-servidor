@@ -4,7 +4,7 @@ import os
 import websockets
 
 CONEXIONES = {}  # Ahora guarda {websocket: apodo}
-VERSION_REQUERIDA = "1.0.0"
+VERSION_REQUERIDA = "1.1.0"
 CLAVE_ADMIN = os.environ.get("CLAVE_ADMIN", "Daviconsualiento1414")
 soundboard_desactivado = False
 
